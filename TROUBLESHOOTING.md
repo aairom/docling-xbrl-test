@@ -5,94 +5,124 @@
 ### Problem Description
 The Web UI was showing "Error: Docling library is required. Install with: pip install docling[xbrl]" even though the dependencies were correctly installed in the virtual environment.
 
-### Root Cause
-The issue was caused by Python symlink resolution in the virtual environment. On macOS, the virtual environment's Python executable (`venv/bin/python3.12`) is a symlink that points to the system Python installation at `/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12`. When using `nohup` to run the Flask application in the background, the symlink was resolved to the system Python, which didn't have access to the packages installed in the virtual environment's `site-packages` directory.
+### Root Causes Identified
+
+#### 1. Incorrect Import Paths (Primary Issue)
+The code was using outdated import paths that don't exist in the current version of docling:
+- **Wrong**: `from docling.backend.xbrl_backend import XbrlBackend, XbrlBackendOptions`
+- **Correct**: `from docling.backend.xml.xbrl_backend import XBRLDocumentBackend, XBRLBackendOptions`
+
+#### 2. Incorrect Class Names
+The class names had changed in the docling library:
+- **Wrong**: `XbrlBackend`, `XbrlBackendOptions`
+- **Correct**: `XBRLDocumentBackend`, `XBRLBackendOptions`
+
+#### 3. Incorrect InputFormat
+The XBRL format enum value was incorrect:
+- **Wrong**: `InputFormat.XBRL`
+- **Correct**: `InputFormat.XML_XBRL`
+
+#### 4. Incorrect Backend Options Fields
+The `XBRLBackendOptions` class has different field names than expected:
+- **Wrong**: `taxonomy_dir`, `taxonomy_package`
+- **Correct**: `taxonomy` (single field that accepts a Path to either directory or package)
+
+#### 5. Old Process Still Running
+The bash script was not properly stopping old web UI processes, causing the old version with incorrect imports to keep running.
 
 ### Solution
-The fix involved explicitly setting the `PYTHONPATH` environment variable to include the virtual environment's `site-packages` directory before running the Flask application. This ensures that even when the system Python is used (due to symlink resolution), it can find and import the packages installed in the virtual environment.
 
-### Changes Made
-
-#### 1. Modified `scripts/start.sh` (lines 108-112)
-```bash
-cd "$PROJECT_DIR"
-
-# Set PYTHONPATH to include venv site-packages and run with venv Python
-SITE_PACKAGES="$VENV_DIR/lib/python3.12/site-packages"
-nohup bash -c "export PYTHONPATH='$SITE_PACKAGES:$PYTHONPATH' && '$VENV_DIR/bin/python' '$SERVER_SCRIPT'" > "$LOG_FILE" 2>&1 &
-```
-
-This change:
-- Explicitly sets `PYTHONPATH` to include the venv's `site-packages` directory
-- Runs the command in a bash subshell to ensure the environment variable is properly set
-- Uses the venv's Python executable to maintain consistency
-
-#### 2. Removed Shebang from `examples/web_ui.py`
-Previously, the file had `#!/usr/bin/env python3` at the top, which could override the Python interpreter specified on the command line. This line was removed to ensure the script uses the Python interpreter specified in the start script.
-
-#### 3. Disabled Flask Debug Mode in `examples/web_ui.py` (line 551)
+#### 1. Fixed Import Paths in `xbrl_agent.py`
 ```python
-app.run(host='0.0.0.0', port=5002, debug=False)
+# Line 26: Corrected import path
+from docling.backend.xml.xbrl_backend import XBRLDocumentBackend, XBRLBackendOptions
+
+# Line 146: Corrected format enum
+converter = DocumentConverter(
+    allowed_formats=[InputFormat.XML_XBRL],
+    pipeline_options=pipeline_options
+)
 ```
 
-Changed from `debug=True` to `debug=False` to prevent Flask from creating a reloader process that could use a different Python interpreter.
+#### 2. Fixed Backend Options Configuration in `xbrl_agent.py` (lines 126-138)
+```python
+# Use taxonomy_package if available, otherwise use taxonomy_dir
+taxonomy_path = None
+if self.config.taxonomy_package and self.config.taxonomy_package.exists():
+    taxonomy_path = self.config.taxonomy_package
+elif self.config.taxonomy_dir and self.config.taxonomy_dir.exists():
+    taxonomy_path = self.config.taxonomy_dir
 
-#### 4. Enhanced Dependency Check in `scripts/start.sh` (line 79)
+xbrl_options = XBRLBackendOptions(
+    enable_local_fetch=self.config.enable_local_fetch,
+    enable_remote_fetch=self.config.enable_remote_fetch,
+    taxonomy=taxonomy_path
+)
+```
+
+#### 3. Created Proper Startup Script (`scripts/start_webui.sh`)
 ```bash
-if ! python -c "import flask; from docling.backend.xbrl_backend import XbrlBackend" 2>/dev/null; then
+#!/bin/bash
+cd "$(dirname "$0")/.."
+
+# Use the venv Python directly (no subshell issues)
+VENV_PYTHON="$(pwd)/venv/bin/python"
+
+# Kill any existing web UI processes
+pkill -f "python.*web_ui.py" 2>/dev/null || true
+
+# Start the web UI with venv Python
+"$VENV_PYTHON" examples/web_ui.py
 ```
 
-Updated the dependency check to verify not just the basic docling import, but also the XBRL backend specifically, ensuring all required components are available.
+#### 4. Created Proper Stop Script (`scripts/stop_webui.sh`)
+```bash
+#!/bin/bash
+pids=$(ps aux | grep -i "python.*web_ui.py" | grep -v grep | awk '{print $2}')
+for pid in $pids; do
+    kill -9 $pid
+done
+```
 
 ### Verification
 After applying these fixes:
 1. The Web UI starts successfully without import errors
 2. The Flask application runs on http://localhost:5002
 3. The docling library and XBRL backend are properly imported
-4. The application is fully functional
-
-### Additional Notes
-
-#### Virtual Environment Structure on macOS
-```
-venv/bin/python -> python3.12
-venv/bin/python3 -> python3.12
-venv/bin/python3.12 -> /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12
-```
-
-The symlink chain means the actual Python executable is the system Python, but packages are installed in `venv/lib/python3.12/site-packages/`.
-
-#### Alternative Solutions (Not Implemented)
-1. **Recreate venv with --copies flag**: This would create actual copies of Python binaries instead of symlinks, but would increase disk usage.
-2. **Use a wrapper script**: Create a separate wrapper that sets up the environment before running Python.
-3. **Install in system Python**: Not recommended as it pollutes the system Python installation.
-
-### Prevention
-To avoid similar issues in the future:
-1. Always use explicit PYTHONPATH when running Python scripts in background processes
-2. Avoid using shebangs in scripts that should use a specific virtual environment
-3. Disable Flask debug mode in production-like deployments
-4. Test dependency imports specifically for the features you're using (e.g., XBRL backend)
-
-### Related Files
-- `scripts/start.sh` - Startup script with PYTHONPATH fix
-- `examples/web_ui.py` - Flask application (shebang removed, debug disabled)
-- `xbrl_agent.py` - Agent implementation with proper import error handling
+4. XBRL documents can be converted successfully
 
 ### Testing
 To verify the fix is working:
 ```bash
 # Start the Web UI
-./scripts/start.sh --web-ui
+./scripts/start_webui.sh
 
-# Check the logs for any import errors
-tail -f xbrl_webui.log
+# Check that it's running
+ps aux | grep web_ui.py
 
 # Open in browser
 open http://localhost:5002
 
 # Stop the Web UI
-./scripts/stop.sh --web-ui
+./scripts/stop_webui.sh
 ```
 
-The Web UI should load without any "Docling library required" errors and display the XBRL Document Conversion interface.
+### Key Learnings
+
+1. **Always check actual module structure**: Use `python -c "import module; print(dir(module))"` to verify available classes and functions
+2. **Check class signatures**: Use `inspect.signature()` to verify parameter names and types
+3. **Kill old processes**: Always ensure old processes are stopped before starting new ones
+4. **Use direct Python paths**: Avoid shell activation in scripts; use full path to venv Python instead
+
+### Related Files
+- `xbrl_agent.py` - Fixed import paths and backend options
+- `scripts/start_webui.sh` - New startup script with proper venv handling
+- `scripts/stop_webui.sh` - New stop script that kills all web UI processes
+- `examples/web_ui.py` - Flask application (unchanged)
+
+### Prevention
+To avoid similar issues in the future:
+1. Always verify import paths match the installed library version
+2. Check class names and signatures when upgrading dependencies
+3. Use proper process management scripts
+4. Test with a fresh virtual environment to catch import issues early

@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 # Flask app
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
-app.config['UPLOAD_FOLDER'] = Path('./uploads')
-app.config['OUTPUT_FOLDER'] = Path('./output')
+app.config['UPLOAD_FOLDER'] = Path(__file__).parent.parent / 'uploads'
+app.config['OUTPUT_FOLDER'] = Path(__file__).parent.parent / 'output'
 
 # Ensure directories exist
 app.config['UPLOAD_FOLDER'].mkdir(exist_ok=True)
@@ -503,15 +503,33 @@ def convert():
         
         # Process XBRL file
         logger.info(f"Processing XBRL file: {upload_path}")
+        
+        # Add timestamp to output filename
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_base_name = f"{Path(file.filename).stem}_{timestamp}"
+        
+        # Update agent's export formats if needed
+        agent.config.export_formats = export_formats if export_formats else ["markdown", "json"]
+        
         result = agent.process_xbrl_file(
             xbrl_path=upload_path,
-            output_base_name=Path(file.filename).stem,
+            output_base_name=output_base_name,
             analyze=True
         )
         
         # Calculate total items
         total_items = sum(result.get('structure', {}).values())
         result['total_items'] = total_items
+        
+        # Convert absolute paths to relative paths for download links
+        if 'output_files' in result:
+            relative_files = {}
+            for fmt, abs_path in result['output_files'].items():
+                # Get path relative to project root
+                rel_path = Path(abs_path).relative_to(Path(__file__).parent.parent)
+                relative_files[fmt] = str(rel_path)
+            result['output_files'] = relative_files
         
         # Clean up uploaded file
         upload_path.unlink()
@@ -527,11 +545,14 @@ def convert():
 def download(filename):
     """Download converted file."""
     try:
-        file_path = Path(filename)
-        if not file_path.exists():
-            return jsonify({'error': 'File not found'}), 404
+        # filename is already relative to project root
+        file_path = Path(__file__).parent.parent / filename
         
-        return send_file(file_path, as_attachment=True)
+        if not file_path.exists():
+            logger.error(f"File not found: {file_path}")
+            return jsonify({'error': f'File not found: {filename}'}), 404
+        
+        return send_file(file_path, as_attachment=True, download_name=file_path.name)
         
     except Exception as e:
         logger.error(f"Download error: {e}")

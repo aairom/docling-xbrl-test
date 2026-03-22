@@ -105,10 +105,13 @@ For a user-friendly web interface:
 # Install Flask
 pip install flask
 
-# Start the web UI
+# Start the web UI (recommended method)
+./scripts/start_webui.sh
+
+# Or run directly
 python examples/web_ui.py
 
-# Open http://localhost:5000 in your browser
+# Open http://localhost:5002 in your browser
 ```
 
 **Features**:
@@ -119,6 +122,13 @@ python examples/web_ui.py
 - 📈 Document structure visualization
 - 📝 Sample text preview
 
+**Management Scripts**:
+```bash
+# Start the web UI
+./scripts/start_webui.sh
+
+# Stop the web UI
+./scripts/stop_webui.sh
 ```
 
 ### Using the MCP Server
@@ -231,6 +241,17 @@ For detailed MCP documentation, see [MCP_SERVER.md](./MCP_SERVER.md).
 **Issue**: `ImportError: No module named 'docling'`
 - **Solution**: Install Docling with `pip install docling[xbrl]`
 
+**Issue**: `"Docling library is required" error in Web UI`
+- **Solution**: Use `./scripts/start_webui.sh` to ensure proper virtual environment activation
+- **Details**: See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for complete fix details
+
+**Issue**: `ImportError: cannot import name 'XbrlBackend'`
+- **Solution**: The correct import is `from docling.backend.xml.xbrl_backend import XBRLDocumentBackend, XBRLBackendOptions`
+- **Note**: Class names changed in recent docling versions
+
+**Issue**: `"XBRLBackendOptions" object has no field "taxonomy_dir"`
+- **Solution**: Use `taxonomy` parameter instead (accepts Path to directory or package)
+
 **Issue**: `FileNotFoundError: Taxonomy files not found`
 - **Solution**: Ensure taxonomy_dir points to correct directory with .xsd and linkbase files
 
@@ -240,7 +261,10 @@ For detailed MCP documentation, see [MCP_SERVER.md](./MCP_SERVER.md).
 **Issue**: MCP server not responding
 - **Solution**: Check server logs and ensure MCP library is installed
 
-For more help, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+**Issue**: Old web UI process still running
+- **Solution**: Use `./scripts/stop_webui.sh` to kill all web UI processes before starting
+
+For detailed troubleshooting, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
 
 ## License
 

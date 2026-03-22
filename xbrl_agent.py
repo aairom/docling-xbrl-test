@@ -20,18 +20,18 @@ from dataclasses import dataclass, field
 import json
 
 try:
-    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling.document_converter import DocumentConverter, PdfFormatOption, XBRLFormatOption
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PipelineOptions
-    from docling.backend.xbrl_backend import XbrlBackend, XbrlBackendOptions
+    from docling.datamodel.backend_options import XBRLBackendOptions
     from docling.datamodel.document import ConversionResult, DoclingDocument
     DOCLING_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     DOCLING_AVAILABLE = False
     # Define placeholder types when docling is not available
     ConversionResult = Any
     DoclingDocument = Any
-    logging.warning("Docling library not available. Install with: pip install docling[xbrl]")
+    logging.warning(f"Docling library not available. Install with: pip install docling[xbrl]. Error: {e}")
 
 
 # Configure logging
@@ -124,27 +124,30 @@ class XBRLConversionAgent:
             Configured DocumentConverter instance
         """
         # Configure XBRL backend options
-        xbrl_options = XbrlBackendOptions(
+        # Use taxonomy_package if available, otherwise use taxonomy_dir
+        taxonomy_path = None
+        if self.config.taxonomy_package and self.config.taxonomy_package.exists():
+            taxonomy_path = self.config.taxonomy_package
+        elif self.config.taxonomy_dir and self.config.taxonomy_dir.exists():
+            taxonomy_path = self.config.taxonomy_dir
+        
+        # Create backend options
+        backend_options = XBRLBackendOptions(
             enable_local_fetch=self.config.enable_local_fetch,
             enable_remote_fetch=self.config.enable_remote_fetch,
+            taxonomy=taxonomy_path
         )
         
-        # Add taxonomy directory if specified
-        if self.config.taxonomy_dir:
-            xbrl_options.taxonomy_dir = str(self.config.taxonomy_dir)
-        
-        # Add taxonomy package if specified
-        if self.config.taxonomy_package:
-            xbrl_options.taxonomy_package = str(self.config.taxonomy_package)
-        
-        # Create pipeline options
-        pipeline_options = PipelineOptions()
-        pipeline_options.xbrl_options = xbrl_options
+        # Create format options with XBRLFormatOption wrapper
+        # This is the correct way according to Docling's test suite
+        format_options = {
+            InputFormat.XML_XBRL: XBRLFormatOption(backend_options=backend_options)
+        }
         
         # Create and return converter
         converter = DocumentConverter(
             allowed_formats=[InputFormat.XML_XBRL],
-            pipeline_options=pipeline_options
+            format_options=format_options
         )
         
         logger.info("XBRL converter configured successfully")
@@ -292,8 +295,8 @@ class XBRLConversionAgent:
         return markdown
     
     def export_to_json(
-        self, 
-        document: DoclingDocument, 
+        self,
+        document: DoclingDocument,
         output_path: Optional[Path] = None
     ) -> str:
         """
@@ -306,7 +309,8 @@ class XBRLConversionAgent:
         Returns:
             JSON string
         """
-        json_str = document.export_to_json()
+        # Use the document's dict representation and convert to JSON
+        json_str = json.dumps(document.model_dump(), indent=2, ensure_ascii=False)
         
         if output_path:
             output_path = Path(output_path)
