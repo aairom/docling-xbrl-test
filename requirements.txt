@@ -1,0 +1,16 @@
+# XBRL Document Conversion Agent - Requirements
+
+# Core dependencies
+docling[xbrl]>=2.0.0
+
+# MCP Server (optional, for MCP functionality)
+mcp>=0.1.0
+
+# Standard library enhancements
+typing-extensions>=4.0.0
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# mypy>=1.0.0
