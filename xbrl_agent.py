@@ -143,7 +143,7 @@ class XBRLConversionAgent:
         
         # Create and return converter
         converter = DocumentConverter(
-            allowed_formats=[InputFormat.XBRL],
+            allowed_formats=[InputFormat.XML_XBRL],
             pipeline_options=pipeline_options
         )
         

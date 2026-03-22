@@ -107,7 +107,9 @@ else
 fi
 cd "$PROJECT_DIR"
 
-nohup "$VENV_DIR/bin/python" "$SERVER_SCRIPT" > "$LOG_FILE" 2>&1 &
+# Set PYTHONPATH to include venv site-packages and run with venv Python
+SITE_PACKAGES="$VENV_DIR/lib/python3.12/site-packages"
+nohup bash -c "export PYTHONPATH='$SITE_PACKAGES:$PYTHONPATH' && '$VENV_DIR/bin/python' '$SERVER_SCRIPT'" > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 
 # Save PID
