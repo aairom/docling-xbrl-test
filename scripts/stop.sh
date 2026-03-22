@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # XBRL MCP Server - Stop Script
-# This script stops the XBRL MCP server running in the background
+# This script stops the XBRL MCP server or Web UI running in the background
+# Usage: ./scripts/stop.sh [--web-ui]
 
 set -e
 
@@ -11,18 +12,35 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Parse command line arguments
+WEB_UI_MODE=false
+if [ "$1" = "--web-ui" ] || [ "$1" = "-w" ]; then
+    WEB_UI_MODE=true
+fi
+
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-PID_FILE="$PROJECT_DIR/.xbrl_server.pid"
-LOG_FILE="$PROJECT_DIR/xbrl_server.log"
 
-echo -e "${GREEN}XBRL MCP Server - Stop Script${NC}"
-echo "================================"
+if [ "$WEB_UI_MODE" = true ]; then
+    PID_FILE="$PROJECT_DIR/.xbrl_webui.pid"
+    LOG_FILE="$PROJECT_DIR/xbrl_webui.log"
+    echo -e "${GREEN}XBRL Web UI - Stop Script${NC}"
+    echo "=========================="
+else
+    PID_FILE="$PROJECT_DIR/.xbrl_server.pid"
+    LOG_FILE="$PROJECT_DIR/xbrl_server.log"
+    echo -e "${GREEN}XBRL MCP Server - Stop Script${NC}"
+    echo "================================"
+fi
 
 # Check if PID file exists
 if [ ! -f "$PID_FILE" ]; then
-    echo -e "${YELLOW}Server is not running (no PID file found)${NC}"
+    if [ "$WEB_UI_MODE" = true ]; then
+        echo -e "${YELLOW}Web UI is not running (no PID file found)${NC}"
+    else
+        echo -e "${YELLOW}Server is not running (no PID file found)${NC}"
+    fi
     exit 0
 fi
 
@@ -31,14 +49,22 @@ PID=$(cat "$PID_FILE")
 
 # Check if process is running
 if ! ps -p "$PID" > /dev/null 2>&1; then
-    echo -e "${YELLOW}Server is not running (process $PID not found)${NC}"
+    if [ "$WEB_UI_MODE" = true ]; then
+        echo -e "${YELLOW}Web UI is not running (process $PID not found)${NC}"
+    else
+        echo -e "${YELLOW}Server is not running (process $PID not found)${NC}"
+    fi
     echo "Cleaning up PID file..."
     rm -f "$PID_FILE"
     exit 0
 fi
 
 # Stop the server
-echo "Stopping XBRL MCP Server (PID: $PID)..."
+if [ "$WEB_UI_MODE" = true ]; then
+    echo "Stopping XBRL Web UI (PID: $PID)..."
+else
+    echo "Stopping XBRL MCP Server (PID: $PID)..."
+fi
 
 # Try graceful shutdown first
 kill "$PID" 2>/dev/null
@@ -61,10 +87,18 @@ fi
 
 # Verify process is stopped
 if ps -p "$PID" > /dev/null 2>&1; then
-    echo -e "${RED}✗ Failed to stop server${NC}"
+    if [ "$WEB_UI_MODE" = true ]; then
+        echo -e "${RED}✗ Failed to stop Web UI${NC}"
+    else
+        echo -e "${RED}✗ Failed to stop server${NC}"
+    fi
     exit 1
 else
-    echo -e "${GREEN}✓ Server stopped successfully${NC}"
+    if [ "$WEB_UI_MODE" = true ]; then
+        echo -e "${GREEN}✓ Web UI stopped successfully${NC}"
+    else
+        echo -e "${GREEN}✓ Server stopped successfully${NC}"
+    fi
     rm -f "$PID_FILE"
     
     # Show log file location

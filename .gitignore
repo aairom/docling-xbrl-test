@@ -38,7 +38,9 @@ xbrl-env/
 output/
 *.log
 .xbrl_server.pid
+.xbrl_webui.pid
 xbrl_server.log
+xbrl_webui.log
 
 # OS
 .DS_Store

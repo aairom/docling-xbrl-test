@@ -28,6 +28,9 @@ try:
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
+    # Define placeholder types when docling is not available
+    ConversionResult = Any
+    DoclingDocument = Any
     logging.warning("Docling library not available. Install with: pip install docling[xbrl]")
 
 

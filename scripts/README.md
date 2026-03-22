@@ -6,12 +6,36 @@ This folder contains utility scripts for managing the XBRL MCP Server.
 
 ### 1. start.sh
 
-Starts the XBRL MCP server in the background.
+Starts the XBRL MCP server or Web UI in the background.
 
 **Usage**:
 ```bash
+# Start MCP Server (default)
 ./scripts/start.sh
+
+# Start Web UI
+./scripts/start.sh --web-ui
+# or
+./scripts/start.sh -w
 ```
+**Features**:
+- **Automatic virtual environment creation**: Creates `venv/` if it doesn't exist
+- **Automatic dependency installation**: Installs requirements.txt if needed
+- Activates virtual environment before starting server
+- Checks if server is already running
+- Starts server in background with nohup
+- Creates PID file for process management
+- Logs output to `xbrl_server.log`
+
+**First Run**:
+On first run, the script will:
+1. Create a virtual environment in `venv/`
+2. Install all dependencies from `requirements.txt`
+3. Start the server
+
+**Subsequent Runs**:
+The script will use the existing virtual environment and only install missing dependencies.
+
 
 **Features**:
 - Checks if server is already running
@@ -20,10 +44,13 @@ Starts the XBRL MCP server in the background.
 - Creates PID file for process management
 - Logs output to `xbrl_server.log`
 
-**Output**:
+**Output (MCP Server)**:
 ```
 XBRL MCP Server - Start Script
 ================================
+Creating virtual environment...
+✓ Virtual environment created
+Activating virtual environment...
 Checking dependencies...
 Starting XBRL MCP Server...
 ✓ Server started successfully
@@ -35,13 +62,38 @@ To stop the server, run: ./scripts/stop.sh
 To view logs, run: tail -f /path/to/xbrl_server.log
 ```
 
+**Output (Web UI)**:
+```
+XBRL Web UI - Start Script
+===========================
+Activating virtual environment...
+Checking dependencies...
+Starting XBRL Web UI...
+✓ Web UI started successfully
+  PID: 12346
+  URL: http://localhost:5000
+  Log file: /path/to/xbrl_webui.log
+  PID file: /path/to/.xbrl_webui.pid
+
+To stop the Web UI, run: ./scripts/stop.sh --web-ui
+To view logs, run: tail -f /path/to/xbrl_webui.log
+
+Open http://localhost:5000 in your browser
+```
+
 ### 2. stop.sh
 
-Stops the XBRL MCP server running in the background.
+Stops the XBRL MCP server or Web UI running in the background.
 
 **Usage**:
 ```bash
+# Stop MCP Server (default)
 ./scripts/stop.sh
+
+# Stop Web UI
+./scripts/stop.sh --web-ui
+# or
+./scripts/stop.sh -w
 ```
 
 **Features**:
@@ -50,16 +102,28 @@ Stops the XBRL MCP server running in the background.
 - Cleans up PID file
 - Preserves log file
 
-**Output**:
+**Output (MCP Server)**:
 ```
 XBRL MCP Server - Stop Script
 ================================
 Stopping XBRL MCP Server (PID: 12345)...
-..........
+.
 ✓ Server stopped successfully
 
 Log file preserved at: /path/to/xbrl_server.log
 To view logs, run: cat /path/to/xbrl_server.log
+```
+
+**Output (Web UI)**:
+```
+XBRL Web UI - Stop Script
+==========================
+Stopping XBRL Web UI (PID: 12346)...
+.
+✓ Web UI stopped successfully
+
+Log file preserved at: /path/to/xbrl_webui.log
+To view logs, run: cat /path/to/xbrl_webui.log
 ```
 
 ### 3. github-push.sh
@@ -129,6 +193,60 @@ Next steps:
 2. Add a description and topics
 3. Configure branch protection rules (optional)
 4. Set up GitHub Actions (optional)
+
+### 4. remove-underscore-folders.sh
+
+Removes folders starting with underscore (_sources/, _data/, _images/) from GitHub while keeping them locally.
+
+**Usage**:
+```bash
+./scripts/remove-underscore-folders.sh
+```
+
+**What it does**:
+1. Removes `_sources/`, `_data/`, and `_images/` from git tracking
+2. Keeps the folders on your local machine
+3. Updates .gitignore to prevent future commits
+4. Commits and pushes the changes to GitHub
+
+**Interactive prompts**:
+```
+Remove Underscore Folders from GitHub
+========================================
+
+WARNING: This will remove _sources/, _data/, and _images/ from GitHub
+The folders will remain on your local machine
+
+Do you want to continue? (yes/no): yes
+
+Step 1: Removing folders from git tracking...
+✓ Folders removed from git tracking
+
+Step 2: Verifying .gitignore...
+✓ .gitignore verified
+
+Step 3: Committing changes...
+✓ Changes committed
+
+Step 4: Pushing to GitHub...
+Note: This will push to the current branch
+Push to GitHub now? (yes/no): yes
+✓ Changes pushed to GitHub
+
+Done!
+
+Summary:
+  • Folders removed from GitHub: _sources/, _data/, _images/
+  • Folders still available locally
+  • .gitignore updated to prevent future commits
+```
+
+**Important Notes**:
+- The folders will be removed from GitHub but remain on your local machine
+- This is useful for keeping source materials and test data locally without exposing them publicly
+- The .gitignore is automatically updated to prevent accidental future commits
+- You can safely run this script multiple times
+
 ```
 
 ## Common Workflows

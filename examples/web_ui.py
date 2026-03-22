@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 XBRL Document Conversion - Web UI
 
@@ -545,11 +544,11 @@ def main():
     print("XBRL Document Conversion - Web UI")
     print("="*60)
     print("\nStarting web server...")
-    print("Open your browser and navigate to: http://localhost:5000")
+    print("Open your browser and navigate to: http://localhost:5002")
     print("\nPress Ctrl+C to stop the server")
     print("="*60 + "\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=True)
 
 
 if __name__ == '__main__':
