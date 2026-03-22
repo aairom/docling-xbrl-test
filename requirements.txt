@@ -6,6 +6,9 @@ docling[xbrl]>=2.0.0
 # MCP Server (optional, for MCP functionality)
 mcp>=0.1.0
 
+# Web UI (optional, for web interface)
+flask>=2.3.0
+
 # Standard library enhancements
 typing-extensions>=4.0.0
 

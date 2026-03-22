@@ -119,6 +119,27 @@ print(f"Output files: {result['output_files']}")
 Create an XBRL agent and convert the document mlac-20251231.xml
 ```
 
+
+### Using the Web UI
+
+For a graphical interface:
+
+```bash
+# Install Flask
+pip install flask
+
+# Start the web UI
+python examples/web_ui.py
+
+# Open http://localhost:5000 in your browser
+```
+
+The web UI provides an intuitive interface for:
+- Uploading XBRL files
+- Configuring taxonomy settings
+- Viewing conversion results
+- Downloading exported files
+
 The MCP server will handle the conversion and return structured results.
 
 ## Architecture

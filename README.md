@@ -96,6 +96,29 @@ result = agent.process_xbrl_file("./_data/xbrl/mlac-20251231.xml")
 print(f"Document: {result['document_name']}")
 print(f"Status: {result['conversion_status']}")
 print(f"Output files: {result['output_files']}")
+
+### Web UI
+
+For a user-friendly web interface:
+
+```bash
+# Install Flask
+pip install flask
+
+# Start the web UI
+python examples/web_ui.py
+
+# Open http://localhost:5000 in your browser
+```
+
+**Features**:
+- 📤 File upload interface
+- ⚙️ Configurable taxonomy settings
+- 📊 Real-time conversion results
+- 📥 Download links for all export formats
+- 📈 Document structure visualization
+- 📝 Sample text preview
+
 ```
 
 ### Using the MCP Server

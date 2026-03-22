@@ -181,3 +181,14 @@ if __name__ == "__main__":
     main()
 
 # Made with Bob
+
+"""
+XBRL Conversion Examples
+
+This file contains multiple examples of using the XBRL Conversion Agent.
+
+For a web-based UI, run:
+    python examples/web_ui.py
+
+Then open http://localhost:5000 in your browser.
+"""
